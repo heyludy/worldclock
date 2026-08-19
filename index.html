@@ -236,8 +236,14 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .reset {
+  .acts {
     margin-left: auto;
+    display: flex;
+    gap: 6px;
+    flex: none;
+  }
+
+  .btn {
     appearance: none;
     border: 0;
     background: var(--tile-2);
@@ -251,8 +257,9 @@
     transition: color .15s, background .15s;
   }
 
-  .reset:hover { background: #3a3a3c; color: #fff; }
-  .reset[hidden] { display: none; }
+  .btn:hover { background: #3a3a3c; color: #fff; }
+  .btn[hidden] { display: none; }
+  .btn.done { background: rgba(48,209,88,.18); color: var(--good); }
 
   .status {
     display: flex;
@@ -409,7 +416,10 @@
     <div class="panel-head">
       <span class="panel-title">Find a time</span>
       <span class="shift" id="shift">Now</span>
-      <button type="button" class="reset" id="reset" hidden>Reset</button>
+      <span class="acts">
+        <button type="button" class="btn" id="copy">Copy</button>
+        <button type="button" class="btn" id="reset" hidden>Now</button>
+      </span>
     </div>
     <div class="status" id="status"><i></i><span data-msg></span><em id="awakeNote"></em></div>
     <input type="range" id="slider" min="-1440" max="1440" step="10" value="0"
@@ -445,6 +455,7 @@
   var VB_Y = 17, VB_H = 433;              // visible slice of the map, in svg units
 
   var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  var WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
   var map = document.getElementById("map");
   var nightPath = document.getElementById("night");
@@ -455,10 +466,32 @@
   var statusMsg = statusEl.querySelector("[data-msg]");
   var shiftLabel = document.getElementById("shift");
   var resetBtn = document.getElementById("reset");
+  var copyBtn = document.getElementById("copy");
   var segButtons = Array.prototype.slice.call(document.querySelectorAll(".seg button"));
 
   var use24 = false;
   try { use24 = localStorage.getItem("wc-format") === "24"; } catch (e) { /* storage blocked */ }
+
+  var TEN = 10 * 60000;
+
+  // ?t=2026-08-20T13:00Z pins the page to one shared moment instead of tracking
+  // the clock, so a link dropped in a group chat opens on the same time for everyone.
+  var pinned = null;
+  (function () {
+    var raw = new URLSearchParams(location.search).get("t");
+    if (!raw) return;
+    var d = new Date(raw);
+    if (!isNaN(d.getTime())) pinned = new Date(Math.round(d.getTime() / TEN) * TEN);
+  })();
+
+  function stampOf(date) { return date.toISOString().slice(0, 16) + "Z"; }
+  function pageUrl(date) {
+    // location.origin is the string "null" on file://, so fall back to href
+    var base = location.origin && location.origin !== "null"
+      ? location.origin + location.pathname
+      : location.href.split(/[?#]/)[0];
+    return base + (date ? "?t=" + stampOf(date) : "");
+  }
 
   // ---------- time zone helpers ----------
   var fmtCache = {};
@@ -659,19 +692,21 @@
   }
 
   // ---------- render ----------
+  var shown = new Date();
+
   function render() {
     var shiftMin = +slider.value;
     var now = new Date();
-    // At rest we show the real time. Once the slider moves we snap to the nearest
-    // ten-minute mark first, so every projected time reads x:00, x:10, x:20...
-    var TEN = 10 * 60000;
-    var target = shiftMin === 0
-      ? now
-      : new Date(Math.round(now.getTime() / TEN) * TEN + shiftMin * 60000);
+    // At rest we show the real time. Once the slider moves - or once a shared link
+    // pins us to a moment - we work off a ten-minute mark, so every projected time
+    // reads x:00, x:10, x:20...
+    var baseMs = pinned ? pinned.getTime() : Math.round(now.getTime() / TEN) * TEN;
+    var live = !pinned && shiftMin === 0;
+    var target = live ? now : new Date(baseMs + shiftMin * 60000);
+    shown = target;
     var sun = subsolar(target);
     drawNight(sun);
 
-    var baseMs = Math.round(now.getTime() / TEN) * TEN;
     if (band.key !== baseMs) band = buildBand(baseMs);
 
     // Everything is described relative to the viewer's own device, the way the Clock app does it.
@@ -739,23 +774,72 @@
     document.getElementById("awakeNote").textContent =
       "awake = " + hourLabel(AWAKE.from) + "–" + hourLabel(AWAKE.to) + " local";
 
-    if (shiftMin === 0) {
-      shiftLabel.textContent = "Now";
-      resetBtn.hidden = true;
-    } else {
-      var a = Math.abs(shiftMin), h = Math.floor(a / 60), m = a % 60;
-      shiftLabel.textContent = (shiftMin < 0 ? "−" : "+") +
-        (h ? h + " hr" : "") + (h && m ? " " : "") + (m ? m + " min" : "");
-      resetBtn.hidden = false;
-    }
+    var a = Math.abs(shiftMin), h = Math.floor(a / 60), m = a % 60;
+    var delta = (shiftMin < 0 ? "−" : "+") +
+      (h ? h + " hr" : "") + (h && m ? " " : "") + (m ? m + " min" : "");
+    shiftLabel.textContent = pinned
+      ? (shiftMin === 0 ? "Shared time" : "Shared time " + delta)
+      : (shiftMin === 0 ? "Now" : delta);
+    resetBtn.hidden = live;
+
+    var url = pageUrl(live ? null : target);
+    // replaceState throws on file://; the page works fine without the URL sync
+    try { if (url !== location.href) history.replaceState(null, "", url); } catch (e) { /* noop */ }
   }
 
   // ---------- events ----------
   slider.addEventListener("input", render);
 
   resetBtn.addEventListener("click", function () {
+    pinned = null;
     slider.value = 0;
+    band.key = null;          // the band recentres on the live baseline
     render();
+  });
+
+  // What gets pasted into the chat: one line per city, then the link back here.
+  function summary() {
+    var lines = CITIES.map(function (c) {
+      var p = partsIn(shown, c.tz);
+      var wd = WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()];
+      return c.name + " — " + wd + " " + MONTHS[p.month - 1] + " " + p.day + ", " +
+             shortTime(p.hour, p.minute);
+    });
+    lines.push(pageUrl(+slider.value === 0 && !pinned ? null : shown));
+    return lines.join("\n");
+  }
+
+  function toClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);          // iOS needs the explicit range
+      var ok = false;
+      try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+      document.body.removeChild(ta);
+      ok ? resolve() : reject(new Error("copy blocked"));
+    });
+  }
+
+  var copyTimer;
+  copyBtn.addEventListener("click", function () {
+    toClipboard(summary()).then(function () {
+      copyBtn.textContent = "Copied";
+      copyBtn.classList.add("done");
+    }, function () {
+      copyBtn.textContent = "Press ⌘C";
+      copyBtn.classList.remove("done");
+    });
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(function () {
+      copyBtn.textContent = "Copy";
+      copyBtn.classList.remove("done");
+    }, 1800);
   });
 
   function syncSeg() {

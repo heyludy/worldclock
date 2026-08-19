@@ -21,6 +21,19 @@ Local time in three cities on one day/night map, in the style of the macOS Clock
 - **Overlap band.** The slider track is painted green across every stretch where all
   three cities are inside waking hours, so the workable slots are visible without
   hunting for them, and a line above says who is currently asleep.
+- **Shareable moment.** Move the slider and the address bar picks up
+  `?t=2026-08-20T13:00Z`. Opening that link pins the page to exactly that instant for
+  everyone, whatever time zone they are in — the clocks stop tracking the wall clock
+  and `Now` puts them back.
+- **Copy.** One tap puts a paste-ready block on the clipboard:
+
+  ```
+  Philadelphia — Thu Aug 20, 9:00 AM
+  Zürich — Thu Aug 20, 3:00 PM
+  Seoul — Thu Aug 20, 10:00 PM
+  https://heyludy.github.io/worldclock/?t=2026-08-20T13:00Z
+  ```
+
 - **12h / 24h toggle**, remembered in `localStorage`.
 - Daylight saving is handled automatically — the page reads the browser's IANA
   time zone database rather than storing any offsets of its own.
