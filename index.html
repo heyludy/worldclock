@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>우리 셋 시계 · 미국 · 스위스 · 한국</title>
+<meta name="description" content="필라델피아 · 취리히 · 서울의 현재 시각을 한눈에. 슬라이더로 약속 시간도 바로 맞춰봐요.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="우리 셋 시계 🇺🇸 🇨🇭 🇰🇷">
+<meta property="og:description" content="필라델피아 · 취리히 · 서울 현재 시각 한눈에. 슬라이더로 약속 시간 맞추기.">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕰️</text></svg>">
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --bg-glow-1: #1b2a4a;
+    --bg-glow-2: #2a1b3d;
+    --card: rgba(255,255,255,.045);
+    --card-border: rgba(255,255,255,.10);
+    --text: #eef2f8;
+    --muted: #8b96ab;
+    --faint: #5d6779;
+    --accent: #7aa2ff;
+    --us: #ff7b72;
+    --ch: #ffb454;
+    --kr: #6ee7b7;
+    --radius: 20px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    min-height: 100dvh;
+    background: var(--bg);
+    background-image:
+      radial-gradient(70rem 40rem at 10% -10%, var(--bg-glow-1) 0%, transparent 60%),
+      radial-gradient(60rem 35rem at 100% 0%, var(--bg-glow-2) 0%, transparent 55%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
+                 "Segoe UI", "Noto Sans KR", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(20px, 5vw, 48px) clamp(16px, 4vw, 32px) 56px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .wrap { width: 100%; max-width: 1080px; }
+
+  /* ---------- header ---------- */
+  header { text-align: center; margin-bottom: clamp(24px, 5vw, 40px); }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: clamp(22px, 5.2vw, 34px);
+    font-weight: 750;
+    letter-spacing: -.02em;
+  }
+
+  .sub {
+    margin: 0;
+    color: var(--muted);
+    font-size: clamp(13px, 3.2vw, 15px);
+  }
+
+  /* ---------- cards ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: clamp(14px, 2.5vw, 20px);
+  }
+
+  .card {
+    position: relative;
+    overflow: hidden;
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 22px 22px 20px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .card::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--tint);
+    opacity: .85;
+  }
+
+  .card::after {
+    content: "";
+    position: absolute;
+    width: 220px; height: 220px;
+    right: -90px; top: -110px;
+    border-radius: 50%;
+    background: var(--tint);
+    opacity: .10;
+    filter: blur(12px);
+    pointer-events: none;
+  }
+
+  .card.us { --tint: var(--us); }
+  .card.ch { --tint: var(--ch); }
+  .card.kr { --tint: var(--kr); }
+
+  .city-row {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    margin-bottom: 14px;
+  }
+
+  .flag { font-size: 22px; line-height: 1; }
+
+  .city {
+    font-size: 16px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+  }
+
+  .country {
+    font-size: 12px;
+    color: var(--faint);
+    margin-left: auto;
+    letter-spacing: .02em;
+  }
+
+  .time {
+    font-size: clamp(40px, 9vw, 52px);
+    font-weight: 700;
+    letter-spacing: -.035em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .ampm {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--tint);
+    letter-spacing: 0;
+  }
+
+  .date {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta {
+    margin-top: 16px;
+    padding-top: 13px;
+    border-top: 1px solid rgba(255,255,255,.07);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--faint);
+    flex-wrap: wrap;
+  }
+
+  .phase {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .diff { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  /* ---------- slider panel ---------- */
+  .panel {
+    margin-top: clamp(20px, 4vw, 28px);
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 20px 22px 22px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .panel-title {
+    font-size: 14px;
+    font-weight: 650;
+  }
+
+  .shift {
+    font-size: 13px;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .reset {
+    margin-left: auto;
+    appearance: none;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.05);
+    color: var(--text);
+    font: inherit;
+    font-size: 12.5px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, opacity .15s;
+  }
+
+  .reset:hover { background: rgba(255,255,255,.11); border-color: rgba(255,255,255,.24); }
+  .reset[hidden] { display: none; }
+
+  input[type=range] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 26px;
+    background: transparent;
+    cursor: pointer;
+    margin: 0;
+  }
+
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(122,162,255,.35), rgba(255,255,255,.10));
+  }
+
+  input[type=range]::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(122,162,255,.35), rgba(255,255,255,.10));
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    margin-top: -8px;
+    border-radius: 50%;
+    background: #fff;
+    border: 5px solid var(--accent);
+    box-shadow: 0 2px 10px rgba(0,0,0,.45);
+  }
+
+  input[type=range]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 5px solid var(--accent);
+    box-shadow: 0 2px 10px rgba(0,0,0,.45);
+  }
+
+  .ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    color: var(--faint);
+    margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hint {
+    margin: 14px 0 0;
+    font-size: 12.5px;
+    color: var(--faint);
+    line-height: 1.6;
+  }
+
+  footer {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--faint);
+  }
+
+  @media (max-width: 520px) {
+    header { margin-bottom: 20px; }
+    .card { padding: 16px 18px 15px; }
+    .city-row { margin-bottom: 10px; }
+    .date { margin-top: 8px; }
+    .meta { margin-top: 12px; padding-top: 10px; }
+    .panel { padding: 16px 18px 18px; }
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f6fb;
+      --bg-glow-1: #dbe6ff;
+      --bg-glow-2: #f0dcff;
+      --card: rgba(255,255,255,.72);
+      --card-border: rgba(15,23,42,.09);
+      --text: #101827;
+      --muted: #5a6478;
+      --faint: #8892a4;
+      --accent: #3b6ef5;
+      --us: #d64541;
+      --ch: #cc7a12;
+      --kr: #0f9d76;
+    }
+    .meta { border-top-color: rgba(15,23,42,.08); }
+    .phase { background: rgba(15,23,42,.05); }
+    .reset { border-color: rgba(15,23,42,.14); background: rgba(15,23,42,.04); }
+    .reset:hover { background: rgba(15,23,42,.09); }
+    input[type=range]::-webkit-slider-thumb { box-shadow: 0 2px 8px rgba(15,23,42,.25); }
+    input[type=range]::-moz-range-thumb { box-shadow: 0 2px 8px rgba(15,23,42,.25); }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>🇺🇸 🇨🇭 🇰🇷 우리 셋 시계</h1>
+    <p class="sub">필라델피아 · 취리히 · 서울 — 지금 몇 시?</p>
+  </header>
+
+  <div class="grid" id="grid"></div>
+
+  <section class="panel">
+    <div class="panel-head">
+      <span class="panel-title">🗓️ 약속 시간 맞춰보기</span>
+      <span class="shift" id="shift">지금</span>
+      <button class="reset" id="reset" hidden>지금으로</button>
+    </div>
+    <input type="range" id="slider" min="-1440" max="1440" step="15" value="0"
+           aria-label="시간 이동 (15분 단위)">
+    <div class="ticks"><span>−24시간</span><span>지금</span><span>+24시간</span></div>
+    <p class="hint">슬라이더를 움직이면 세 도시 시간이 같이 움직여요. 서머타임(DST)은 자동 반영됩니다.</p>
+  </section>
+
+  <footer id="footer"></footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var ZONES = [
+    { key: "us", flag: "🇺🇸", city: "필라델피아", country: "미국 · 동부", tz: "America/New_York" },
+    { key: "ch", flag: "🇨🇭", city: "취리히",     country: "스위스",      tz: "Europe/Zurich" },
+    { key: "kr", flag: "🇰🇷", city: "서울",       country: "한국",        tz: "Asia/Seoul" }
+  ];
+
+  var BASE = "kr"; // 시차 기준 도시
+
+  var WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
+  var grid = document.getElementById("grid");
+  var slider = document.getElementById("slider");
+  var shiftLabel = document.getElementById("shift");
+  var resetBtn = document.getElementById("reset");
+  var footer = document.getElementById("footer");
+
+  // 카드 생성
+  var nodes = {};
+  ZONES.forEach(function (z) {
+    var el = document.createElement("article");
+    el.className = "card " + z.key;
+    el.innerHTML =
+      '<div class="city-row">' +
+        '<span class="flag">' + z.flag + '</span>' +
+        '<span class="city">' + z.city + '</span>' +
+        '<span class="country">' + z.country + '</span>' +
+      '</div>' +
+      '<div class="time"><span data-t></span><span class="ampm" data-ap></span></div>' +
+      '<div class="date" data-d></div>' +
+      '<div class="meta">' +
+        '<span class="phase"><span data-pi></span><span data-pl></span></span>' +
+        '<span class="diff" data-diff></span>' +
+      '</div>';
+    grid.appendChild(el);
+    nodes[z.key] = {
+      time: el.querySelector("[data-t]"),
+      ampm: el.querySelector("[data-ap]"),
+      date: el.querySelector("[data-d]"),
+      phaseIcon: el.querySelector("[data-pi]"),
+      phaseLabel: el.querySelector("[data-pl]"),
+      diff: el.querySelector("[data-diff]")
+    };
+  });
+
+  // 특정 타임존에서의 날짜/시각 구성요소
+  var partsFmt = {};
+  function getParts(date, tz) {
+    if (!partsFmt[tz]) {
+      partsFmt[tz] = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz, hourCycle: "h23",
+        year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", weekday: "short"
+      });
+    }
+    var out = {};
+    partsFmt[tz].formatToParts(date).forEach(function (p) {
+      if (p.type !== "literal") out[p.type] = p.value;
+    });
+    return {
+      year: +out.year, month: +out.month, day: +out.day,
+      hour: +out.hour, minute: +out.minute, second: +out.second,
+      weekday: out.weekday
+    };
+  }
+
+  // UTC 대비 오프셋(분)
+  function offsetMinutes(date, tz) {
+    var p = getParts(date, tz);
+    var asUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+    return Math.round((asUTC - date.getTime()) / 60000);
+  }
+
+  function phaseOf(hour) {
+    if (hour < 5)  return { icon: "🌙", label: "한밤중" };
+    if (hour < 9)  return { icon: "🌅", label: "이른 아침" };
+    if (hour < 12) return { icon: "☀️", label: "오전" };
+    if (hour < 18) return { icon: "🌤️", label: "오후" };
+    if (hour < 22) return { icon: "🌆", label: "저녁" };
+    return { icon: "🌙", label: "밤" };
+  }
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+
+  // 분 단위 → "3시간", "8시간 30분", "45분"
+  function spanText(mins) {
+    var a = Math.abs(mins);
+    var h = Math.floor(a / 60);
+    var m = a % 60;
+    if (!h) return m + "분";
+    return h + "시간" + (m ? " " + m + "분" : "");
+  }
+
+  function fmtDiff(mins) {
+    if (mins === 0) return "동일";
+    return (mins < 0 ? "−" : "+") + spanText(mins);
+  }
+
+  function render() {
+    var shiftMin = +slider.value;
+    var now = new Date();
+    var target = new Date(now.getTime() + shiftMin * 60000);
+
+    // 기준 도시 오프셋
+    var baseTz = ZONES.filter(function (z) { return z.key === BASE; })[0].tz;
+    var baseOff = offsetMinutes(target, baseTz);
+    var baseParts = getParts(target, baseTz);
+    var baseStamp = Date.UTC(baseParts.year, baseParts.month - 1, baseParts.day);
+
+    ZONES.forEach(function (z) {
+      var p = getParts(target, z.tz);
+      var n = nodes[z.key];
+
+      var h12 = p.hour % 12 === 0 ? 12 : p.hour % 12;
+      n.time.textContent = h12 + ":" + pad(p.minute);
+      n.ampm.textContent = p.hour < 12 ? "AM" : "PM";
+
+      var dayStamp = Date.UTC(p.year, p.month - 1, p.day);
+      var wd = WEEKDAYS[new Date(dayStamp).getUTCDay()];
+      var dayTag = "";
+      if (z.key !== BASE && dayStamp !== baseStamp) {
+        dayTag = dayStamp < baseStamp ? " · 어제" : " · 내일";
+      }
+      n.date.textContent = p.month + "월 " + p.day + "일 (" + wd + ")" + dayTag;
+
+      var ph = phaseOf(p.hour);
+      n.phaseIcon.textContent = ph.icon;
+      n.phaseLabel.textContent = ph.label;
+
+      if (z.key === BASE) {
+        n.diff.textContent = "기준";
+      } else {
+        n.diff.textContent = "한국 " + fmtDiff(offsetMinutes(target, z.tz) - baseOff);
+      }
+    });
+
+    // 슬라이더 라벨
+    if (shiftMin === 0) {
+      shiftLabel.textContent = "지금";
+      resetBtn.hidden = true;
+    } else {
+      shiftLabel.textContent = spanText(shiftMin) + (shiftMin < 0 ? " 전" : " 뒤");
+      resetBtn.hidden = false;
+    }
+  }
+
+  slider.addEventListener("input", render);
+  resetBtn.addEventListener("click", function () {
+    slider.value = 0;
+    render();
+  });
+
+  // 브라우저 로컬 타임존 안내
+  try {
+    var localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    footer.textContent = "이 기기 시간대: " + localTz;
+  } catch (e) { /* noop */ }
+
+  render();
+  setInterval(render, 1000);
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) render();
+  });
+})();
+</script>
+</body>
+</html>
