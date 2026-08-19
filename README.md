@@ -1,38 +1,54 @@
-# 🇺🇸 🇨🇭 🇰🇷 우리 셋 시계
+# World Clock — Philadelphia · Zürich · Seoul
 
-미국(필라델피아) · 스위스(취리히) · 한국(서울) 세 도시의 현재 시각을 한 화면에서 보는 페이지.
+Local time in three cities on one day/night map, in the style of the macOS Clock app.
 
-**👉 https://heyludy.github.io/worldclock/**
+**→ https://heyludy.github.io/worldclock/**
 
-## 기능
+![World Clock](og.png)
 
-- 세 도시 실시간 시계 (1초마다 갱신)
-- 날짜 · 요일 · 어제/내일 표시
-- 한국 기준 시차 표시
-- 아침/낮/저녁/밤 상태 표시
-- **약속 시간 맞춰보기** — 슬라이더로 ±24시간 이동하면 세 도시 시간이 같이 움직임
-- 서머타임(DST) 자동 반영 — 브라우저 `Intl` API의 IANA 타임존 데이터를 사용하므로 별도 관리 불필요
-- 모바일 대응, 다크/라이트 모드 자동
+## What it does
 
-## 구조
+- **Day/night map.** A real solar terminator, recomputed every second from the sun's
+  actual position, so you can see at a glance who is awake.
+- **Analog + digital clock per city.** The dial turns dark wherever the sun has set,
+  the way the Clock app does it.
+- **Relative to you.** Each city shows `Today / Yesterday / Tomorrow` and its offset in
+  hours against whatever time zone your own device is in.
+- **Sunrise and sunset**, computed per city per day.
+- **Find a time.** Drag the slider ±24 hours and all three clocks, the map and the
+  dials move together. Times snap to the nearest ten minutes, so you always land on
+  `x:00`, `x:10`, `x:20` — something you can actually propose to people.
+- **12h / 24h toggle**, remembered in `localStorage`.
+- Daylight saving is handled automatically — the page reads the browser's IANA
+  time zone database rather than storing any offsets of its own.
 
-`index.html` 파일 하나. 빌드 도구·의존성 없음. 브라우저에서 바로 열어도 동작함.
+## Structure
 
-## 도시 바꾸기
+A single `index.html`. No build step, no dependencies, no network calls. Open the file
+directly in a browser and it works.
 
-`index.html` 안의 `ZONES` 배열만 수정하면 됨.
+The world map is a Natural Earth 1:110m land outline (public domain), projected to
+equirectangular, simplified with Douglas–Peucker, and inlined as one SVG path. Rings
+that cross the antimeridian are unwrapped and redrawn at ±360° so nothing smears across
+the map.
+
+## Changing the cities
+
+Edit the `CITIES` array in `index.html`. Coordinates drive the map pin and the
+sunrise/sunset math, so both are needed.
 
 ```js
-var ZONES = [
-  { key: "us", flag: "🇺🇸", city: "필라델피아", country: "미국 · 동부", tz: "America/New_York" },
-  { key: "ch", flag: "🇨🇭", city: "취리히",     country: "스위스",      tz: "Europe/Zurich" },
-  { key: "kr", flag: "🇰🇷", city: "서울",       country: "한국",        tz: "Asia/Seoul" }
+var CITIES = [
+  { key: "phl", name: "Philadelphia", tz: "America/New_York", lat: 39.9526, lon: -75.1652, side: "right" },
+  { key: "zrh", name: "Zürich",       tz: "Europe/Zurich",    lat: 47.3769, lon:   8.5417, side: "right" },
+  { key: "sel", name: "Seoul",        tz: "Asia/Seoul",       lat: 37.5665, lon: 126.9780, side: "left"  }
 ];
 ```
 
-`tz`는 [IANA 타임존 이름](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)을 쓴다.
-시차 기준 도시는 바로 아래 `BASE` 값(`"kr"`)으로 정한다.
+- `tz` — an [IANA time zone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
+- `side` — which way the label hangs off the map pin, `"left"` or `"right"`. Use `"left"`
+  for cities near the right edge of the map so the label stays on screen.
 
-## 배포
+## Deploying
 
-`main` 브랜치에 push하면 GitHub Pages가 자동으로 반영한다.
+Push to `main`; GitHub Pages publishes from the repository root.
