@@ -26,6 +26,7 @@
     --label-2: rgba(235,235,245,.60);
     --label-3: rgba(235,235,245,.32);
     --orange: #ff9f0a;
+    --good: #30d158;
     --r-lg: 18px;
     --r-md: 14px;
   }
@@ -253,6 +254,34 @@
   .reset:hover { background: #3a3a3c; color: #fff; }
   .reset[hidden] { display: none; }
 
+  .status {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;          /* "Philadelphia and Zurich are asleep" is long */
+    gap: 2px 7px;
+    font-size: 12.5px;
+    color: var(--label-2);
+    margin-bottom: 4px;
+  }
+
+  .status i {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--good);
+    flex: none;
+    transition: background .25s ease;
+  }
+
+  .status.off i { background: #5a5a5e; }
+
+  .status em {
+    margin-left: auto;
+    font-style: normal;
+    font-size: 11.5px;
+    color: var(--label-3);
+    white-space: nowrap;
+  }
+
   input[type=range] {
     appearance: none;
     -webkit-appearance: none;
@@ -264,22 +293,23 @@
     margin: 0;
   }
 
+  /* the track is painted by script: green where all three cities are awake */
   input[type=range]::-webkit-slider-runnable-track {
-    height: 4px;
-    border-radius: 2px;
-    background: #3a3a3c;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--track, #3a3a3c);
   }
 
   input[type=range]::-moz-range-track {
-    height: 4px;
-    border-radius: 2px;
-    background: #3a3a3c;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--track, #3a3a3c);
   }
 
   input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 22px; height: 22px;
-    margin-top: -9px;
+    margin-top: -8.5px;
     border-radius: 50%;
     background: #fff;
     border: 0;
@@ -381,6 +411,7 @@
       <span class="shift" id="shift">Now</span>
       <button type="button" class="reset" id="reset" hidden>Reset</button>
     </div>
+    <div class="status" id="status"><i></i><span data-msg></span><em id="awakeNote"></em></div>
     <input type="range" id="slider" min="-1440" max="1440" step="10" value="0"
            aria-label="Shift all clocks, in 10-minute steps">
     <div class="ticks"><span>−24 hr</span><span>now</span><span>+24 hr</span></div>
@@ -404,6 +435,9 @@
     { key: "sel", name: "Seoul",        tz: "Asia/Seoul",       lat: 37.5665, lon: 126.9780, side: "left"  }
   ];
 
+  // Hours, in each city's own local time, when someone is plausibly reachable.
+  var AWAKE = { from: 8, to: 23 };
+
   var RAD = Math.PI / 180;
   var W = 1000, H = 500;                 // svg units, equirectangular
   var projX = function (lon) { return (lon + 180) * W / 360; };
@@ -417,6 +451,8 @@
   var termPath = document.getElementById("termline");
   var tiles = document.getElementById("tiles");
   var slider = document.getElementById("slider");
+  var statusEl = document.getElementById("status");
+  var statusMsg = statusEl.querySelector("[data-msg]");
   var shiftLabel = document.getElementById("shift");
   var resetBtn = document.getElementById("reset");
   var segButtons = Array.prototype.slice.call(document.querySelectorAll(".seg button"));
@@ -579,6 +615,49 @@
     };
   });
 
+  // ---------- "everyone is awake" band ----------
+  // Walk the whole slider range once and paint the track green wherever all three
+  // cities sit inside AWAKE. Only depends on the ten-minute baseline, so it is
+  // rebuilt every ten minutes rather than every tick.
+  var band = { key: null };
+
+  function awakeAt(date, city) {
+    var p = partsIn(date, city.tz);
+    var h = p.hour + p.minute / 60;
+    return h >= AWAKE.from && h < AWAKE.to;
+  }
+
+  var GOOD = "#30d158";
+
+  function buildBand(baseMs) {
+    var STEP = 10, N = 2880 / STEP, ok = new Array(N + 1), i, j;
+    for (i = 0; i <= N; i++) {
+      var t = new Date(baseMs + (-1440 + i * STEP) * 60000);
+      ok[i] = true;
+      for (j = 0; j < CITIES.length; j++) {
+        if (!awakeAt(t, CITIES[j])) { ok[i] = false; break; }
+      }
+    }
+    var stops = [], cur = ok[0], start = 0;
+    for (i = 1; i <= N + 1; i++) {
+      if (i > N || ok[i] !== cur) {
+        stops.push((cur ? GOOD : "#3a3a3c") + " " +
+                   (start / N * 100).toFixed(3) + "% " +
+                   (Math.min(i, N) / N * 100).toFixed(3) + "%");
+        if (i > N) break;
+        cur = ok[i]; start = i;
+      }
+    }
+    slider.style.setProperty("--track", "linear-gradient(90deg," + stops.join(",") + ")");
+    return { key: baseMs };
+  }
+
+  function hourLabel(h) {
+    if (h === 0) return "12 AM";
+    if (h === 12) return "12 PM";
+    return use24 ? pad(h) + ":00" : (h % 12) + (h < 12 ? " AM" : " PM");
+  }
+
   // ---------- render ----------
   function render() {
     var shiftMin = +slider.value;
@@ -592,14 +671,21 @@
     var sun = subsolar(target);
     drawNight(sun);
 
+    var baseMs = Math.round(now.getTime() / TEN) * TEN;
+    if (band.key !== baseMs) band = buildBand(baseMs);
+
     // Everything is described relative to the viewer's own device, the way the Clock app does it.
     var localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     var localOff = offsetMinutes(target, localTz);
     var todayStamp = dayStamp(partsIn(now, localTz));
 
+    var asleep = [];
+
     CITIES.forEach(function (c) {
       var p = partsIn(target, c.tz);
       var n = ui[c.key];
+      var hourNow = p.hour + p.minute / 60;
+      if (hourNow < AWAKE.from || hourNow >= AWAKE.to) asleep.push(c.name);
 
       var t = clockText(p.hour, p.minute);
       n.time.textContent = t.main;
@@ -643,6 +729,15 @@
         n.sun.textContent = "↑ " + shortTime(r.hour, r.minute) + "   ↓ " + shortTime(s.hour, s.minute);
       }
     });
+
+    statusEl.classList.toggle("off", asleep.length > 0);
+    statusMsg.textContent = asleep.length === 0
+      ? "All three awake"
+      : (asleep.length === 1 ? asleep[0] + " is asleep"
+                             : asleep.slice(0, -1).join(", ") + " and " +
+                               asleep[asleep.length - 1] + " are asleep");
+    document.getElementById("awakeNote").textContent =
+      "awake = " + hourLabel(AWAKE.from) + "–" + hourLabel(AWAKE.to) + " local";
 
     if (shiftMin === 0) {
       shiftLabel.textContent = "Now";

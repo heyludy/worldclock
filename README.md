@@ -18,6 +18,9 @@ Local time in three cities on one day/night map, in the style of the macOS Clock
 - **Find a time.** Drag the slider ±24 hours and all three clocks, the map and the
   dials move together. Times snap to the nearest ten minutes, so you always land on
   `x:00`, `x:10`, `x:20` — something you can actually propose to people.
+- **Overlap band.** The slider track is painted green across every stretch where all
+  three cities are inside waking hours, so the workable slots are visible without
+  hunting for them, and a line above says who is currently asleep.
 - **12h / 24h toggle**, remembered in `localStorage`.
 - Daylight saving is handled automatically — the page reads the browser's IANA
   time zone database rather than storing any offsets of its own.
@@ -48,6 +51,12 @@ var CITIES = [
 - `tz` — an [IANA time zone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
 - `side` — which way the label hangs off the map pin, `"left"` or `"right"`. Use `"left"`
   for cities near the right edge of the map so the label stays on screen.
+
+What counts as "awake" for the green band is the `AWAKE` constant just above `CITIES`:
+
+```js
+var AWAKE = { from: 8, to: 23 };   // local hours, applied to every city
+```
 
 ## Deploying
 
