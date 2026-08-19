@@ -320,6 +320,10 @@
 
   /* ---------------- narrow ---------------- */
   @media (max-width: 640px) {
+    .pin i { width: 7px; height: 7px; }
+    .pin b { font-size: 10.5px; left: 12px; }
+    .pin b span { display: none; }
+    .pin.phl b { left: auto; right: 12px; text-align: right; }
     .tiles { grid-template-columns: 1fr; gap: 1px; background: var(--sep); border-radius: var(--r-md); overflow: hidden; }
     .tile {
       flex-direction: row;
@@ -521,7 +525,7 @@
   var ui = {};
   CITIES.forEach(function (c) {
     var pin = document.createElement("div");
-    pin.className = "pin" + (c.side === "left" ? " left" : "");
+    pin.className = "pin " + c.key + (c.side === "left" ? " left" : "");
     pin.style.left = ((c.lon + 180) / 360 * 100) + "%";
     // the svg viewBox is cropped, so map latitude into the visible window
     pin.style.top = ((projY(c.lat) - VB_Y) / VB_H * 100) + "%";
